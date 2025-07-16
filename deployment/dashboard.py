@@ -5,8 +5,9 @@ import pandas as pd
 from wordcloud import WordCloud
 import matplotlib.pyplot as plt
 import re
+from datetime import datetime, timedelta
 
-st.set_page_config(layout="wide", page_title="Dashboard Trending News")
+st.set_page_config(layout="wide", page_title="Indonesia Trending News Dashboard", page_icon="📰")
 
 def load_stopwords(filepath):
     try:
@@ -14,10 +15,9 @@ def load_stopwords(filepath):
             stopwords = {line.strip() for line in f}
         return stopwords
     except FileNotFoundError:
-        st.warning(f"File stopwords di '{filepath}' tidak ditemukan.")
         return set()
 
-@st.cache_data(ttl=300)
+@st.cache_data(ttl=600)
 def scrape_artikel_trending_tempo():
     url = 'https://www.tempo.co'
     data_list = []
@@ -43,9 +43,7 @@ def scrape_artikel_trending_tempo():
         print(f"Error di scrape_artikel_trending_tempo: {e}")
     return data_list
 
-# --- SCRAPER UNTUK TEMPO ---
-
-@st.cache_data(ttl=300)
+@st.cache_data(ttl=600)
 def scrape_topik_trending_tempo():
     url = 'https://www.tempo.co'
     data_list = []
@@ -70,8 +68,7 @@ def scrape_topik_trending_tempo():
         print(f"Error di scrape_topik_trending_tempo: {e}")
     return data_list
 
-# --- SCRAPER UNTUK KOMPAS ---
-@st.cache_data(ttl=300)
+@st.cache_data(ttl=600)
 def scrape_kompas_populer():
     url = 'https://indeks.kompas.com/terpopuler'
     data_list = []
@@ -97,75 +94,111 @@ def scrape_kompas_populer():
         print(f"Error di scrape_kompas_populer: {e}")
     return data_list
 
-# --- TAMPILAN UTAMA DASHBOARD ---
-st.title("Trending News Dashboard")
+# --- Tampilan Utama Dashboard ---
+
+# --- SIDEBAR ---
+with st.sidebar:
+    st.title("**Trending News Dashboard**")
+    st.info("Dashboard ini menampilkan berita trending & populer dari berbagai sumber media di Indonesia.")
+    
+    if st.button("🔄 Refresh Data"):
+        st.cache_data.clear()
+        st.rerun()
+
+    st.markdown("---")
+
+    wib = timedelta(hours=7)
+    last_update_time = (datetime.utcnow() + wib).strftime("%d %B %Y, %H:%M:%S WIB")
+    st.write(f"**Update Terakhir:**")
+    st.success(f"{last_update_time}")
+    
+    with st.expander("ℹ️ Tentang Aplikasi"):
+        st.write("""
+            Aplikasi ini dibuat dengan **Streamlit** dan melakukan web scraping menggunakan **Python**, **Requests**, dan **BeautifulSoup4**. 
+            Tujuan dari proyek ini adalah untuk belajar dan mempraktikkan teknik-teknik data scraping dan visualisasi data.
+        """)
+
+# --- HALAMAN UTAMA ---
+st.header("Ringkasan Berita Terkini")
 
 STOPWORDS_ID = load_stopwords('list-of-stopwords.txt')
 
-tab1, tab2 = st.tabs(["Tempo.co", "Kompas.com"])
+artikel_tempo = scrape_artikel_trending_tempo()
+topik_tempo = scrape_topik_trending_tempo()
+berita_kompas = scrape_kompas_populer()
 
-# --- KONTEN TAB 1: TEMPO.CO ---
+tab1, tab2 = st.tabs(["**Tempo.co**", "**Kompas.com**"])
+
+# --- KONTEN UNTUK TAB 1: TEMPO.CO ---
 with tab1:
-    st.header("Trending di Tempo.co")
+    st.subheader("Analisis Trending di Tempo.co")
     
-    artikel_tempo = scrape_artikel_trending_tempo()
-    topik_tempo = scrape_topik_trending_tempo()
-
     col1, col2 = st.columns(2)
-    col1.metric("Total Artikel Trending", value=len(artikel_tempo))
-    col2.metric("Total Topik Trending", value=len(topik_tempo))
+    col1.metric("Total Artikel Trending", value=f"{len(artikel_tempo)} Artikel")
+    col2.metric("Total Topik Trending", value=f"{len(topik_tempo)} Topik")
+    
     st.markdown("---")
 
     col3, col4 = st.columns(2)
     with col3:
-        st.subheader("Word Cloud Judul Artikel")
+        st.write("#### Word Cloud Judul Artikel")
         if artikel_tempo:
             text = ' '.join(item['Judul'] for item in artikel_tempo)
-            wordcloud = WordCloud(width=400, height=200, background_color='white', stopwords=STOPWORDS_ID).generate(text)
+            wordcloud = WordCloud(width=400, height=200, background_color='#FFFFFF', colormap='viridis', stopwords=STOPWORDS_ID).generate(text)
             st.image(wordcloud.to_array())
         else:
             st.warning("Tidak ada data artikel.")
+            
     with col4:
-        st.subheader("Word Cloud Topik Trending")
+        st.write("#### Word Cloud Topik Trending")
         if topik_tempo:
             text = ' '.join(item['Topik'].replace('#', '') for item in topik_tempo)
-            wordcloud = WordCloud(width=400, height=200, background_color='white', stopwords=STOPWORDS_ID).generate(text)
+            wordcloud = WordCloud(width=400, height=200, background_color='#FFFFFF', colormap='plasma', stopwords=STOPWORDS_ID).generate(text)
             st.image(wordcloud.to_array())
         else:
             st.warning("Tidak ada data topik.")
     
     st.markdown("---")
-    st.subheader("Data Lengkap")
-    st.dataframe(pd.DataFrame(artikel_tempo))
-    st.dataframe(pd.DataFrame(topik_tempo))
+    
+    with st.expander("Lihat Data Lengkap Artikel Trending"):
+        st.dataframe(pd.DataFrame(artikel_tempo))
+        
+    with st.expander("Lihat Data Lengkap Topik Trending"):
+        st.dataframe(pd.DataFrame(topik_tempo))
 
-# --- KONTEN TAB 2: KOMPAS.COM ---
+
+# --- KONTEN UNTUK TAB 2: KOMPAS.COM ---
 with tab2:
-    st.header("Berita Terpopuler di Kompas.com")
+    st.subheader("Analisis Berita Terpopuler di Kompas.com")
     
-    berita_kompas = scrape_kompas_populer()
+    df_kompas = pd.DataFrame(berita_kompas)
+    
+    total_berita = len(df_kompas)
+    kategori_unik = df_kompas['Kategori'].nunique()
 
-    st.metric("Total Berita Populer Ditemukan", value=len(berita_kompas))
+    col_k1, col_k2 = st.columns(2)
+    col_k1.metric("Total Berita Populer", value=f"{total_berita} Berita")
+    col_k2.metric("Jumlah Kategori Berita", value=f"{kategori_unik} Kategori")
+    st.markdown("---")
+
+    st.write("#### Top 5 Kategori Berita Terpopuler")
+    if not df_kompas.empty:
+        category_counts = df_kompas['Kategori'].value_counts().head(5)
+        st.bar_chart(category_counts)
+    else:
+        st.warning("Tidak ada data kategori.")
+    
+    st.markdown("---")
+
+    st.write("#### Word Cloud Judul Berita")
+    if not df_kompas.empty:
+        text_judul = ' '.join(df_kompas['Judul'])
+        wordcloud_judul = WordCloud(width=800, height=300, background_color='#FFFFFF', colormap='cividis', stopwords=STOPWORDS_ID).generate(text_judul)
+        st.image(wordcloud_judul.to_array())
+    else:
+        st.warning("Tidak ada data judul.")
+        
     st.markdown("---")
     
-    col5, col6 = st.columns(2)
-    with col5:
-        st.subheader("Word Cloud Judul Berita")
-        if berita_kompas:
-            text = ' '.join(item['Judul'] for item in berita_kompas)
-            wordcloud = WordCloud(width=800, height=400, background_color='white', stopwords=STOPWORDS_ID).generate(text)
-            st.image(wordcloud.to_array())
-        else:
-            st.warning("Tidak ada data judul.")
-    with col6:
-        st.subheader("Word Cloud Kategori Berita")
-        if berita_kompas:
-            text = ' '.join(item['Kategori'] for item in berita_kompas)
-            wordcloud = WordCloud(width=400, height=400, background_color='white').generate(text)
-            st.image(wordcloud.to_array())
-        else:
-            st.warning("Tidak ada data kategori.")
-            
-    st.markdown("---")
-    st.subheader("Data Lengkap")
-    st.dataframe(pd.DataFrame(berita_kompas))
+    with st.expander("Lihat Data Lengkap Berita Populer"):
+        st.dataframe(df_kompas, use_container_width=True)
