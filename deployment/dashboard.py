@@ -153,7 +153,7 @@ with tab2:
         st.subheader("Word Cloud Judul Berita")
         if berita_kompas:
             text = ' '.join(item['Judul'] for item in berita_kompas)
-            wordcloud = WordCloud(width=400, height=200, background_color='white', stopwords=STOPWORDS_ID).generate(text)
+            wordcloud = WordCloud(width=800, height=400, background_color='white', stopwords=STOPWORDS_ID).generate(text)
             st.image(wordcloud.to_array())
         else:
             st.warning("Tidak ada data judul.")
@@ -161,7 +161,7 @@ with tab2:
         st.subheader("Word Cloud Kategori Berita")
         if berita_kompas:
             text = ' '.join(item['Kategori'] for item in berita_kompas)
-            wordcloud = WordCloud(width=400, height=200, background_color='white').generate(text)
+            wordcloud = WordCloud(width=400, height=400, background_color='white').generate(text)
             st.image(wordcloud.to_array())
         else:
             st.warning("Tidak ada data kategori.")
