@@ -118,7 +118,6 @@ with st.sidebar:
             Tujuan dari proyek ini adalah untuk belajar dan mempraktikkan teknik-teknik data scraping dan visualisasi data.
         """)
 
-# --- HALAMAN UTAMA ---
 st.header("Ringkasan Berita Terkini")
 
 STOPWORDS_ID = load_stopwords('list-of-stopwords.txt')
@@ -165,7 +164,6 @@ with tab1:
         
     with st.expander("Lihat Data Lengkap Topik Trending"):
         st.dataframe(pd.DataFrame(topik_tempo))
-
 
 # --- KONTEN UNTUK TAB 2: KOMPAS.COM ---
 with tab2:
